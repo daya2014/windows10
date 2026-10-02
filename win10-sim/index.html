@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+(function() {
+    try {
+        var originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+        CanvasRenderingContext2D.prototype.getImageData = function() {
+            try {
+                return originalGetImageData.apply(this, arguments);
+            } catch (e) {
+                if (e.name === "SecurityError" || (e.message && e.message.indexOf("security") !== -1)) {
+                    console.warn("[AxureShow] 已拦截 Canvas getImageData 安全报错。");
+                    var sw = arguments[2] || 1, sh = arguments[3] || 1;
+                    return this.createImageData(Math.max(1, sw), Math.max(1, sh));
+                }
+                throw e;
+            }
+        };
+        var originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function() {
+            try {
+                return originalToDataURL.apply(this, arguments);
+            } catch (e) {
+                if (e.name === "SecurityError" || (e.message && e.message.indexOf("security") !== -1)) {
+                    console.warn("[AxureShow] 已拦截 Canvas toDataURL 安全报错。");
+                    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+                }
+                throw e;
+            }
+        };
+    } catch (e) {}
+})();
+</script>
+<meta charset="UTF-8">
+<title>Win10 高仿真模拟器｜SVG内置图标版</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="monitor">
+  <div id="win10">
+    <div class="desktop" id="desktop">
+      <div class="selection-box" id="selectBox"></div>
+    </div>
+    <div class="taskbar">
+      <button class="start-btn" onclick="toggleStartMenu()">⊞</button>
+      <div class="taskbar-apps" id="taskbarApps"></div>
+      <div class="tray">
+        <span id="clock">00:00</span>
+        <span>RAM:<span id="ramDisplay">0</span>/16GB</span>
+      </div>
+    </div>
+    <div class="start-menu" id="startMenu">
+      <div class="start-app-item" onclick="openThisPC()">此电脑</div>
+      <div class="start-app-item" onclick="openNotepad()">记事本</div>
+      <div class="start-app-item" onclick="openTaskManager()">任务管理器</div>
+      <div class="start-app-item" onclick="openRecycleBin()">回收站</div>
+      <div class="start-app-item" onclick="openSettings()">设置</div>
+      <div class="start-app-item" onclick="openPersonalize()">个性化</div>
+      <div class="divider"></div>
+      <div class="start-app-item" onclick="openWechat()">微信</div>
+      <div class="start-app-item" onclick="openQQ()">QQ</div>
+      <div class="start-app-item" onclick="openWeCom()">企业微信</div>
+      <div class="start-app-item" onclick="openLark()">飞书</div>
+      <div class="start-app-item" onclick="openBrowser()">浏览器</div>
+      <div class="start-power">
+        <button onclick="shutdown()">关机</button>
+        <button onclick="restart()">重启</button>
+      </div>
+    </div>
+    <div class="rightmenu" id="desktopRightMenu">
+      <div onclick="newTxt()">新建文本文档</div>
+      <div onclick="newFolder()">新建文件夹</div>
+      <div class="divider"></div>
+      <div onclick="sortByName()">排序-名称</div>
+      <div onclick="sortByDate()">排序-修改日期</div>
+      <div class="divider"></div>
+      <div onclick="refreshDesktop()">刷新</div>
+      <div onclick="openPersonalize()">个性化</div>
+    </div>
+    <div class="rightmenu" id="fileRightMenu">
+      <div onclick="openSelectedFile()">打开</div>
+      <div onclick="copyFile()">复制</div>
+      <div onclick="cutFile()">剪切</div>
+      <div onclick="pasteFile()">粘贴</div>
+      <div class="divider"></div>
+      <div onclick="delFile()">删除</div>
+      <div onclick="renameItem()">重命名</div>
+      <div onclick="showProperty()">属性</div>
+    </div>
+    <div class="modal" id="propModal">
+      <div class="modal-header">属性</div>
+      <div class="modal-body" id="propBody"></div>
+      <div class="modal-footer">
+        <button onclick="closePropModal()">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+<script src="apps.js"></script>
+</body>
+</html>
