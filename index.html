@@ -280,22 +280,29 @@ function initDesktop(){
 }
 function renderDesktop(){
   const d = $("#desktop");
-  d.innerHTML="";
+  // 先把选择框拿出来，再清空内容
   const box = $("#selectBox");
+  d.innerHTML="";
+  // 把选择框放回桌面容器
   d.appendChild(box);
+
   sys.desktopItems.forEach(item=>{
     let svgCode;
     if(item.type==="pc") svgCode = svgIcons.pc;
     else if(item.type==="recycle") svgCode = sys.recycleBin.length>0 ? svgIcons.recycleFull : svgIcons.recycleEmpty;
     else if(item.type==="lark") svgCode = svgIcons.lark;
     else if(item.type==="browser") svgCode = svgIcons.browser;
-    d.innerHTML += `
-    <div class="desktop-icon" ondblclick="openItem('${item.type}')">
+    const div = document.createElement('div');
+    div.className="desktop-icon";
+    div.ondblclick = function(){ openItem(item.type); };
+    div.innerHTML = `
       <div class="icon-img">${svgCode}</div>
       <div class="icon-name">${item.name}</div>
-    </div>`
+    `;
+    d.appendChild(div);
   })
 }
+
 function openItem(type){
   if(type==="pc") openThisPC();
   if(type==="recycle") openRecycleBin();
