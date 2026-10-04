@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+(function() {
+    try {
+        var originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+        CanvasRenderingContext2D.prototype.getImageData = function() {
+            try {
+                return originalGetImageData.apply(this, arguments);
+            } catch (e) {
+                if (e.name === "SecurityError" || (e.message && e.message.indexOf("security") !== -1)) {
+                    console.warn("[AxureShow] 已拦截 Canvas getImageData 安全报错。");
+                    var sw = arguments[2] || 1, sh = arguments[3] || 1;
+                    return this.createImageData(Math.max(1, sw), Math.max(1, sh));
+                }
+                throw e;
+            }
+        };
+        var originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function() {
+            try {
+                return originalToDataURL.apply(this, arguments);
+            } catch (e) {
+                if (e.name === "SecurityError" || (e.message && e.message.indexOf("security") !== -1)) {
+                    console.warn("[AxureShow] 已拦截 Canvas toDataURL 安全报错。");
+                    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+                }
+                throw e;
+            }
+        };
+    } catch (e) {}
+})();
+</script>
+<meta charset="UTF-8">
+<title>Win10 高仿真模拟器｜SVG内置图标版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",system-ui,sans-serif;user-select:none}
+body{background:#0b0b10;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden}
+#monitor{width:1100px;height:680px;background:#000;border:14px solid #222;border-radius:16px;overflow:hidden;position:relative}
+.screen-off{background:#000 !important}
+#win10{width:100%;height:100%;display:none;position:relative;
+background: radial-gradient(ellipse at center,#2774c2 0%,#003366 100%);
+}
+.desktop{width:100%;height:calc(100% - 48px);padding:16px;position:relative}
+.desktop-icon{width:84px;text-align:center;cursor:pointer;display:inline-block;margin:10px;vertical-align:top}
+.icon-img{width:48px;height:48px;margin:0 auto 4px;display:flex;align-items:center;justify-content:center}
+.icon-img svg{width:48px;height:48px}
+.icon-name{font-size:12px;color:#fff;text-shadow:0 0 3px #000, 0 0 6px #000}
+.icon-selected{background:rgba(0,120,215,0.35)}
+.selection-box{position:absolute;border:1px solid #0078d4;background:rgba(0,120,215,0.2);pointer-events:none;display:none}
+.taskbar{position:absolute;bottom:0;width:100%;height:48px;background:rgba(40,40,40,0.92);display:flex;align-items:center;padding:0 12px;z-index:20}
+.start-btn{width:40px;height:40px;border:none;color:#fff;font-size:22px;cursor:pointer;margin:0 6px;background:#222}
+.taskbar-apps{display:flex;gap:4px}
+.tray{margin-left:auto;font-size:13px;display:flex;gap:10px;color:#fff}
+.start-menu{position:absolute;bottom:48px;left:0;width:380px;height:520px;background:#222;border-radius:0 8px 0 0;display:none;padding:12px;z-index:30;color:#fff;overflow:auto}
+.start-power{position:absolute;bottom:16px;right:16px}
+.start-power button{background:#444;border:none;color:#fff;padding:8px 12px;border-radius:4px;margin:4px;cursor:pointer}
+.start-app-item{padding:8px;cursor:pointer}
+.start-app-item:hover{background:#444}
+.window{position:absolute;width:620px;height:440px;background:#fff;color:#222;border-radius:4px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.55);z-index:10;transition:all 0.15s ease}
+.window.active{z-index:90}
+.window-header{height:32px;background:#333;color:#fff;display:flex;align-items:center;padding:0 8px;cursor:move}
+.window-title{flex:1;font-size:13px}
+.window-ctrl button{width:32px;height:32px;border:none;background:transparent;color:#fff;cursor:pointer}
+.window-body{height:calc(100% - 32px);overflow:auto;font-size:14px}
+.resize-handle{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize}
+.explorer-wrap{display:flex;height:100%;flex-direction:column}
+.address-bar{width:100%;padding:4px 6px;margin:4px;border:1px solid #ccc}
+.explorer-main{display:flex;flex:1}
+.tree-panel{width:220px;background:#f3f3f3;padding:8px;overflow:auto}
+.tree-item{padding:4px 2px;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:13px}
+.tree-item:hover{background:#ddd}
+.tree-fold{font-weight:bold}
+.tree-indent{padding-left:14px}
+.file-item{padding:8px;margin:4px;cursor:pointer}
+.file-item:hover{background:#e9e9e9}
+.file-list-panel{flex:1;padding:8px;overflow:auto}
+.tree-item{padding:4px 2px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.tree-item:hover{background:#ddd}
+.tree-fold{font-weight:bold}
+.tree-indent{padding-left:14px}
+.file-item{padding:4px;margin:2px;cursor:pointer}
+.file-item:hover{background:#e9e9e9}
+.file-item.selected{background:#0078d4;color:#fff}
+.rightmenu{position:absolute;width:220px;background:#fff;border:1px solid #aaa;border-radius:2px;z-index:100;display:none;color:#222}
+.rightmenu > div{padding:7px 12px;cursor:pointer}
+.rightmenu > div:hover{background:#0078d4;color:#fff}
+.rightmenu .divider{height:1px;background:#ccc;margin:4px 0;pointer-events:none}
+textarea{width:100%;height:320px;border:1px solid #aaa;padding:4px}
+table{width:100%;border-collapse:collapse;color:#222}
+td,th{border:1px solid #aaa;padding:4px 6px;font-size:13px}
+.modal{position:absolute;width:320px;background:#fff;border:1px solid #666;box-shadow:0 4px 16px #000;z-index:1000;display:none}
+.modal-header{background:#333;color:#fff;padding:6px}
+.modal-body{padding:12px}
+.modal-footer{padding:8px;text-align:right}
+.modal-footer button{padding:4px 10px;margin:0 4px}
+.im-container{display:flex;height:100%;width:100%}
+.im-sidebar{width:180px;background:#f4f4f4;padding:8px;overflow:auto}
+.im-chat-area{flex:1;display:flex;flex-direction:column}
+.im-chat-content{flex:1;padding:8px;overflow:auto;background:#fff}
+.im-input-area{padding:8px;border-top:1px solid #ccc}
+.im-input-area textarea{width:100%;height:80px}
+.im-contact-item{padding:6px;cursor:pointer;border-radius:4px;margin:2px}
+.im-contact-item:hover{background:#ddd}
+.im-contact-item.active{background:#0078d4;color:#fff}
+.msg-self{text-align:right;margin:4px}
+.msg-other{text-align:left;margin:4px}
+.msg-bubble{display:inline-block;padding:6px 10px;border-radius:8px;max-width:70%}
+.msg-self .msg-bubble{background:#95ec69}
+.msg-other .msg-bubble{background:#e5e5e5}
+.browser-wrap{height:100%;display:flex;flex-direction:column}
+.browser-topbar{display:flex;gap:4px;padding:6px;background:#eee}
+.browser-url{flex:1;padding:4px}
+.browser-page{flex:1;background:#fff;padding:10px;overflow:auto}
+</style>
+</head>
+<body>
+<div id="monitor">
+  <div id="win10">
+    <div class="desktop" id="desktop">
+      <div class="selection-box" id="selectBox"></div>
+    </div>
+    <div class="taskbar">
+      <button class="start-btn" onclick="toggleStartMenu()">⊞</button>
+      <div class="taskbar-apps" id="taskbarApps"></div>
+      <div class="tray">
+        <span id="clock">00:00</span>
+        <span>RAM:<span id="ramDisplay">0</span>/16GB</span>
+      </div>
+    </div>
+    <div class="start-menu" id="startMenu">
+      <div class="start-app-item" onclick="openThisPC()">此电脑</div>
+      <div class="start-app-item" onclick="openNotepad()">记事本</div>
+      <div class="start-app-item" onclick="openTaskManager()">任务管理器</div>
+      <div class="start-app-item" onclick="openRecycleBin()">回收站</div>
+      <div class="start-app-item" onclick="openSettings()">设置</div>
+      <div class="start-app-item" onclick="openPersonalize()">个性化</div>
+      <div class="divider"></div>
+      <div class="start-app-item" onclick="openWechat()">微信</div>
+      <div class="start-app-item" onclick="openQQ()">QQ</div>
+      <div class="start-app-item" onclick="openWeCom()">企业微信</div>
+      <div class="start-app-item" onclick="openLark()">飞书</div>
+      <div class="start-app-item" onclick="openBrowser()">浏览器</div>
+      <div class="start-power">
+        <button onclick="shutdown()">关机</button>
+        <button onclick="restart()">重启</button>
+      </div>
+    </div>
+    <div class="rightmenu" id="desktopRightMenu">
+      <div onclick="newTxt()">新建文本文档</div>
+      <div onclick="newFolder()">新建文件夹</div>
+      <div class="divider"></div>
+      <div onclick="sortByName()">排序-名称</div>
+      <div onclick="sortByDate()">排序-修改日期</div>
+      <div class="divider"></div>
+      <div onclick="refreshDesktop()">刷新</div>
+      <div onclick="openPersonalize()">个性化</div>
+    </div>
+    <div class="rightmenu" id="fileRightMenu">
+      <div onclick="openSelectedFile()">打开</div>
+      <div onclick="copyFile()">复制</div>
+      <div onclick="cutFile()">剪切</div>
+      <div onclick="pasteFile()">粘贴</div>
+      <div class="divider"></div>
+      <div onclick="delFile()">删除</div>
+      <div onclick="renameItem()">重命名</div>
+      <div onclick="showProperty()">属性</div>
+    </div>
+    <div class="modal" id="propModal">
+      <div class="modal-header">属性</div>
+      <div class="modal-body" id="propBody"></div>
+      <div class="modal-footer">
+        <button onclick="closePropModal()">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s=>document.querySelector(s);
+// ===== Windows二进制1024存储换算，簇4KB =====
+function bytesToGB(bytes) {
+  return bytes / (1024 * 1024 * 1024);
+}
+function gbToBytes(gb) {
+  return gb * 1024 * 1024 * 1024;
+}
+const CLUSTER_SIZE = 4096; // Windows默认4KB簇
+// 按簇向上取整，计算文件真实磁盘占用
+function getFileDiskOccupiedSize(fileByteSize) {
+  if(fileByteSize === 0) return CLUSTER_SIZE;
+  const clusterCount = Math.ceil(fileByteSize / CLUSTER_SIZE);
+  return clusterCount * CLUSTER_SIZE;
+}
+// C盘全局容量
+const C_TOTAL_BYTES = gbToBytes(112);
+let cFreeBytes = gbToBytes(15.1);
+let sys = {
+  powerOn:false,
+  ramTotal:16,
+  ramUsed:0,
+  desktopItems:[],
+  recycleBin:[],
+  windows:[],
+  nextWinZ:11,
+  clipboard:null,
+  clipboardOp:"",
+  selectedIcons:[],
+  currentExplorerFolder:null,
+   fs:{
+    quickAccess:[
+      {name:"桌面",type:"quick"},
+      {name:"下载",type:"quick"},
+      {name:"文档",type:"quick"},
+      {name:"图片",type:"quick"},
+    ],
+        drives:[
+      {
+        name:"BOOTCAMP (C:)",
+        type:"disk",
+        totalBytes:C_TOTAL_BYTES,
+        freeBytes:cFreeBytes,
+        expanded:false,
+        children:[
+          {name:"3D 对象",type:"folder",children:[]},
+          {name:"视频",type:"folder",children:[]},
+          {name:"图片",type:"folder",children:[]},
+          {name:"文档",type:"folder",children:[]},
+          {name:"下载",type:"folder",children:[]},
+          {name:"音乐",type:"folder",children:[]},
+          {name:"桌面",type:"folder",children:[]}
+        ]
+      }
+    ],
+    cloud:[
+      {name:"WPS云盘",type:"cloud"},
+      {name:"OneDrive",type:"cloud"}
+    ]
+  },
+  wechatChats:[
+    {name:"文件传输助手",msgList:[{who:"other",text:"你好，微信模拟器已就绪"}]},
+    {name:"好友A",msgList:[{who:"other",text:"今天有空吗？"}]}
+  ],
+  qqChats:[
+    {name:"我的设备",msgList:[{who:"other",text:"QQ模拟器启动成功"}]},
+    {name:"班级群",msgList:[{who:"other",text:"作业记得提交"}]}
+  ],
+  wecomChats:[
+    {name:"同事小张",msgList:[{who:"other",text:"下午开会"}]},
+    {name:"公司大群",msgList:[{who:"other",text:"通知：本周五团建"}]}
+  ],
+  larkChats:[
+    {name:"项目组",msgList:[{who:"other",text:"文档更新了，请查看"}]},
+    {name:"行政",msgList:[{who:"other",text:"打卡提醒"}]}
+  ],
+  browserUrl:"https://example.com"
+};
+// 全部内置SVG图标，无外部图片
+const svgIcons = {
+pc:`<svg viewBox="0 0 48 48"><rect fill="#0078d4" rx="4" width="48" height="48" /><path fill="#fff" d="M12 16h24v16H12z M16 36h16v4H16z" /></svg>`,
+recycleEmpty:`<svg viewBox="0 0 48 48"><rect fill="#4488dd" rx="6" width="48" height="48" /><path fill="#fff" d="M14 12h20v4H14zM16 18h16l-2 20H18z" /></svg>`,
+recycleFull:`<svg viewBox="0 0 48 48"><rect fill="#4488dd" rx="6" width="48" height="48" /><path fill="#fff" d="M14 12h20v4H14zM16 18h16l-2 20H18z" /><circle cx="20" cy="26" r="4" fill="#2277dd" /><circle cx="28" cy="26" r="4" fill="#2277dd" /><circle cx="20" cy="34" r="4" fill="#2277dd" /></svg>`,
+wechat:`<svg viewBox="0 0 48 48"><circle fill="#07c160" cx="24" cy="24" r="22" /><circle fill="#fff" cx="16" cy="18" r="3" /><circle fill="#fff" cx="32" cy="18" r="3" /><circle fill="#fff" cx="14" cy="30" r="3" /><circle fill="#fff" cx="34" cy="30" r="3" /></svg>`,
+qq:`<svg viewBox="0 0 48 48"><circle fill="#12b7f5" cx="24" cy="24" r="22" /><ellipse fill="#fff" cx="24" cy="18" rx="12" ry="10" /><circle fill="#000" cx="18" cy="17" r="2" /><circle fill="#000" cx="30" cy="17" r="2" /><path fill="#ff6644" d="M14 26h20l-2 6H16z" /></svg>`,
+wecom:`<svg viewBox="0 0 48 48"><rect fill="#eeeeee" rx="8" width="48" height="48" /><rect fill="#07c160" x="8" y="8" width="32" height="32" rx="6" /></svg>`,
+lark:`<svg viewBox="0 0 48 48"><defs><linearGradient id="lk" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7149ff" /><stop offset="100%" stop-color="#22b8cf" /></linearGradient></defs><rect fill="url(#lk)" rx="8" width="48" height="48" /><circle fill="#fff" cx="24" cy="24" r="12" /></svg>`,
+browser:`<svg viewBox="0 0 48 48"><circle fill="#ffffff" cx="24" cy="24" r="22" /><circle stroke="#4285f4" stroke-width="3" cx="24" cy="24" r="16" /><circle fill="#4285f4" cx="24" cy="24" r="8" /></svg>`,
+txt:`<svg viewBox="0 0 48 48"><rect fill="#1971c2" rx="4" width="48" height="48" /></svg>`,
+folder:`<svg viewBox="0 0 48 48"><rect fill="#fd7e14" rx="4" width="48" height="48" /></svg>`
+};
+// 创建文件，占用磁盘
+function createFileOnDisk(fileByteSize){
+  const occupyBytes = getFileDiskOccupiedSize(fileByteSize);
+  if(cFreeBytes >= occupyBytes){
+    cFreeBytes -= occupyBytes;
+    sys.fs.drives[0].freeBytes = cFreeBytes;
+    refreshExplorer();
+    return true;
+  }else{
+    alert("磁盘空间不足！");
+    return false;
+  }
+}
+// 删除文件，归还磁盘空间
+function deleteFileFromDisk(fileByteSize){
+  const occupyBytes = getFileDiskOccupiedSize(fileByteSize);
+  cFreeBytes += occupyBytes;
+  sys.fs.drives[0].freeBytes = cFreeBytes;
+  refreshExplorer();
+}
+// 开机点击
+$("#monitor").onclick = function(){
+  if(!sys.powerOn){
+    sys.powerOn=true;
+    $("#win10").style.display="block";
+    $("#monitor").classList.remove("screen-off");
+    initDesktop();
+    startClock();
+    updateRAM();
+    initBoxSelect();
+  }
+}
+function shutdown(){
+  sys.powerOn=false;
+  $("#win10").style.display="none";
+  $("#monitor").classList.add("screen-off");
+  $("#startMenu").style.display="none";
+}
+function restart(){
+  shutdown();
+  setTimeout(()=>{
+    sys.powerOn=true;
+    $("#win10").style.display="block";
+    $("#monitor").classList.remove("screen-off");
+    initDesktop();
+    updateRAM();
+  },800)
+}
+function toggleStartMenu(){
+  const sm = $("#startMenu");
+  sm.style.display = sm.style.display==="block" ? "none":"block";
+}
+// 修复：点击页面空白关闭开始菜单
+document.addEventListener("click",(e)=>{
+  const sm = $("#startMenu");
+  const btn = document.querySelector(".start-btn");
+  if(sm.style.display==="block"){
+    if(!sm.contains(e.target) && !btn.contains(e.target)){
+      sm.style.display="none";
+    }
+  }
+})
+
+function startClock(){
+  setInterval(()=>{
+    const d = new Date();
+    $("#clock").innerText = d.toLocaleTimeString();
+  },1000)
+}
+function updateRAM(){
+  sys.ramUsed = sys.windows.length * 2;
+  if(sys.ramUsed>sys.ramTotal) sys.ramUsed=sys.ramTotal;
+  $("#ramDisplay").innerText = sys.ramUsed;
+  if(sys.ramUsed>=16) alert("警告：内存已满，系统卡顿！");
+  renderTaskbarWindows();
+}
+function renderTaskbarWindows(){
+  const tb = $("#taskbarApps");
+  tb.innerHTML="";
+  sys.windows.forEach(w=>{
+    tb.innerHTML += `<button onclick="focusWindow(${w.winId})">${w.title}</button>`
+  })
+}
+function initDesktop(){
+  sys.desktopItems = [
+    {id:1,name:"此电脑",type:"pc",mtime:Date.now()},
+    {id:2,name:"回收站",type:"recycle",mtime:Date.now()},
+    {id:3,name:"微信",type:"wechat",mtime:Date.now()},
+    {id:4,name:"QQ",type:"qq",mtime:Date.now()},
+    {id:5,name:"企业微信",type:"wecom",mtime:Date.now()},
+    {id:6,name:"飞书",type:"lark",mtime:Date.now()},
+    {id:7,name:"浏览器",type:"browser",mtime:Date.now()}
+  ];
+  sys.selectedIcons=[];
+  renderDesktop();
+}
+function renderDesktop(){
+  const d = $("#desktop");
+  const box = $("#selectBox");
+  d.innerHTML="";
+  d.appendChild(box);
+  sys.desktopItems.forEach(item=>{
+    let svgCode;
+    if(item.type==="pc") svgCode = svgIcons.pc;
+    else if(item.type==="recycle"){
+      svgCode = sys.recycleBin.length>0 ? svgIcons.recycleFull : svgIcons.recycleEmpty;
+    }
+    else if(item.type==="txt") svgCode = svgIcons.txt;
+    else if(item.type==="folder") svgCode = svgIcons.folder;
+    else if(item.type==="wechat") svgCode = svgIcons.wechat;
+    else if(item.type==="qq") svgCode = svgIcons.qq;
+    else if(item.type==="wecom") svgCode = svgIcons.wecom;
+    else if(item.type==="lark") svgCode = svgIcons.lark;
+    else if(item.type==="browser") svgCode = svgIcons.browser;
+    const selClass = sys.selectedIcons.includes(item.id) ? "icon-selected" : "";
+    d.innerHTML += `
+    <div class="desktop-icon ${selClass}" data-id="${item.id}" ondblclick="openItem('${item.type}',${item.id})" 
+    onclick="iconClick(event,${item.id})" oncontextmenu="showFileRightMenu(event,${item.id})">
+      <div class="icon-img">${svgCode}</div>
+      <div class="icon-name">${item.name}</div>
+    </div>`
+  })
+}
+function refreshDesktop(){renderDesktop();hideAllMenu()}
+function iconClick(e,id){
+  e.stopPropagation();
+  if(!e.ctrlKey) sys.selectedIcons=[];
+  if(!sys.selectedIcons.includes(id)) sys.selectedIcons.push(id);
+  renderDesktop();
+}
+let boxSel = {active:false,sx:0,sy:0};
+function initBoxSelect(){
+  const desk = $("#desktop");
+  const box = $("#selectBox");
+  desk.onmousedown = function(e){
+    if(e.target!==desk) return;
+    sys.selectedIcons=[];
+    renderDesktop();
+    boxSel.active=true;
+    boxSel.sx=e.offsetX;
+    boxSel.sy=e.offsetY;
+    box.style.display="block";
+    box.style.left = boxSel.sx+"px";
+    box.style.top = boxSel.sy+"px";
+    box.style.width="0px";
+    box.style.height="0px";
+  }
+  document.onmousemove = function(e){
+    if(!boxSel.active) return;
+    const rect = desk.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const dx = mx - boxSel.sx;
+    const dy = my - boxSel.sy;
+    box.style.width = Math.abs(dx)+"px";
+    box.style.height = Math.abs(dy)+"px";
+    box.style.left = dx<0 ? mx : boxSel.sx;
+    box.style.top = dy<0 ? my : boxSel.sy;
+  }
+  document.onmouseup = function(){
+    if(boxSel.active){
+      boxSel.active=false;
+      box.style.display="none";
+    }
+  }
+}
+function hideAllMenu(){
+  $("#desktopRightMenu").style.display="none";
+  $("#fileRightMenu").style.display="none";
+}
+$("#desktop").addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  if(!sys.powerOn) return;
+  hideAllMenu();
+  $("#desktopRightMenu").style.left=e.offsetX+"px";
+  $("#desktopRightMenu").style.top=e.offsetY+"px";
+  $("#desktopRightMenu").style.display="block";
+})
+function showFileRightMenu(e,id){
+  e.preventDefault();
+  e.stopPropagation();
+  if(!sys.selectedIcons.includes(id)){
+    sys.selectedIcons=[id];
+  }
+  hideAllMenu();
+  $("#fileRightMenu").style.left = e.offsetX + "px";
+  $("#fileRightMenu").style.top = e.offsetY + "px";
+  $("#fileRightMenu").style.display="block";
+}
+document.addEventListener("click",hideAllMenu)
+function sortByName(){
+  sys.desktopItems.sort((a,b)=>a.name.localeCompare(b.name));
+  renderDesktop();
+}
+function sortByDate(){
+  sys.desktopItems.sort((a,b)=>b.mtime - a.mtime);
+  renderDesktop();
+}
+function newTxt(){
+  const name = prompt("文件名：","新建文档.txt");
+  if(!name) return;
+  const id = Date.now();
+  sys.desktopItems.push({id,name,type:"txt",content:"",mtime:Date.now()});
+  renderDesktop();
+  hideAllMenu();
+}
+function newFolder(){
+  const name = prompt("文件夹名称：","新建文件夹");
+  if(!name) return;
+  const id = Date.now();
+  sys.desktopItems.push({id,name,type:"folder",files:[],mtime:Date.now()});
+  renderDesktop();
+  hideAllMenu();
+}
+function openItem(type,id){
+  if(type==="pc") openThisPC();
+  if(type==="recycle") openRecycleBin();
+  if(type==="txt"){
+    const f = sys.desktopItems.find(x=>x.id===id);
+    openNotepad(f);
+  }
+  if(type==="folder"){
+    const f = sys.desktopItems.find(x=>x.id===id);
+    createWindow(f.name,`<p>文件夹：${f.name}</p><pre>${JSON.stringify(f.files,null,2)}</pre>`)
+  }
+  if(type==="wechat") openWechat();
+  if(type==="qq") openQQ();
+  if(type==="wecom") openWeCom();
+  if(type==="lark") openLark();
+  if(type==="browser") openBrowser();
+}
+
+// 窗口管理
+function createWindow(title,bodyHtml){
+  const winId = Date.now();
+  sys.windows.push({winId, title});
+  updateRAM();
+  sys.nextWinZ++;
+  const win = document.createElement("div");
+  win.className="window";
+  win.style.left = 100 + sys.windows.length*25 +"px";
+  win.style.top = 60 + sys.windows.length*25 +"px";
+  win.style.zIndex = sys.nextWinZ;
+  win.dataset.winId = winId;
+  win.innerHTML=`
+    <div class="window-header" onmousedown="startDrag(event,${winId})" onclick="focusWindow(${winId})">
+      <span class="window-title">${title}</span>
+      <div class="window-ctrl">
+        <button onclick="minWin(${winId})">−</button>
+        <button onclick="maxWin(${winId})">□</button>
+        <button onclick="closeWin(${winId})">✕</button>
+      </div>
+    </div>
+    <div class="window-body">${bodyHtml}</div>
+    <div class="resize-handle" onmousedown="startResize(event,${winId})"></div>
+  `;
+  $("#win10").append(win);
+  return winId;
+}
+function focusWindow(winId){
+  sys.nextWinZ++;
+  const allWins = document.querySelectorAll(".window");
+  allWins.forEach(w=> w.classList.remove("active"));
+  const target = Array.from(allWins).find(w=>w.dataset.winId == winId);
+  if(target){
+    target.style.zIndex = sys.nextWinZ;
+    target.classList.add("active");
+    target.style.display="block";
+  }
+}
+let dragData=null;
+function startDrag(e,winId){
+  focusWindow(winId);
+  dragData={winId,ox:e.clientX,oy:e.clientY};
+  document.onmousemove=onDrag;
+  document.onmouseup=stopDrag;
+}
+function onDrag(e){
+  if(!dragData) return;
+  const targetWin = document.querySelector(`.window[data-win-id="${dragData.winId}"]`);
+  const dx = e.clientX - dragData.ox;
+  const dy = e.clientY - dragData.oy;
+  targetWin.style.left = parseInt(targetWin.style.left)+dx+"px";
+  targetWin.style.top = parseInt(targetWin.style.top)+dy+"px";
+  dragData.ox=e.clientX;dragData.oy=e.clientY;
+}
+function stopDrag(){dragData=null;document.onmousemove=null;document.onmouseup=null}
+let resizeData=null;
+function startResize(e,winId){
+  e.stopPropagation();
+  focusWindow(winId);
+  resizeData={winId,ox:e.clientX,oy:e.clientY};
+  document.onmousemove=onResize;
+  document.onmouseup=stopResize;
+}
+function onResize(e){
+  if(!resizeData) return;
+  const targetWin = document.querySelector(`.window[data-win-id="${resizeData.winId}"]`);
+  const dw = e.clientX - resizeData.ox;
+  const dh = e.clientY - resizeData.oy;
+  let w = parseInt(targetWin.style.width)+dw;
+  let h = parseInt(targetWin.style.height)+dh;
+  if(w>300) targetWin.style.width = w+"px";
+  if(h>200) targetWin.style.height = h+"px";
+  resizeData.ox=e.clientX;resizeData.oy=e.clientY;
+}
+function stopResize(){resizeData=null;document.onmousemove=null;document.onmouseup=null}
+function closeWin(winId){
+  const wins = document.querySelectorAll(".window");
+  for(let w of wins){
+    if(w.dataset.winId == winId){
+      w.remove();break;
+    }
+  }
+  sys.windows = sys.windows.filter(w=>w.winId!==winId);
+  updateRAM();
+}
+function minWin(id){
+  const el = document.querySelector(`.window[data-win-id="${id}"]`);
+  el.style.display="none";
+}
+function maxWin(id){
+  const el = document.querySelector(`.window[data-win-id="${id}"]`);
+  if(el.style.width==="100%"){
+    el.style.width="620px";el.style.height="440px";
+    el.style.left = 100 + sys.windows.length*25 +"px";
+    el.style.top = 60 + sys.windows.length*25 +"px";
+  }else{
+    el.style.width="100%";el.style.height="calc(100% - 48px)";
+    el.style.left="0";el.style.top="0";
+  }
+}
+
+// 文件右键操作，修复文件夹复制浅拷贝，深度JSON拷贝
+function deepClone(obj){
+  return JSON.parse(JSON.stringify(obj));
+}
+function copyFile(){
+  if(sys.selectedIcons.length===0){alert("未选中文件");return}
+  sys.clipboard = deepClone(sys.selectedIcons.map(id=>sys.desktopItems.find(d=>d.id===id)));
+  sys.clipboardOp="copy";
+  alert("已复制");
+  hideAllMenu();
+}
+function cutFile(){
+  if(sys.selectedIcons.length===0){alert("未选中文件");return}
+  sys.clipboard = deepClone(sys.selectedIcons.map(id=>sys.desktopItems.find(d=>d.id===id)));
+  sys.clipboardOp="cut";
+  alert("已剪切");
+  hideAllMenu();
+}
+function pasteFile(){
+  if(!sys.clipboard){alert("剪贴板为空");return}
+  sys.clipboard.forEach(f=>{
+    const newFile = deepClone(f);
+    newFile.id = Date.now()+Math.random();
+    newFile.mtime = Date.now();
+    if(sys.clipboardOp==="copy") sys.desktopItems.push(newFile);
+    if(sys.clipboardOp==="cut"){
+      const idx = sys.desktopItems.findIndex(x=>x.id===f.id);
+      if(idx>-1) sys.desktopItems[idx]=newFile;
+    }
+  })
+  if(sys.clipboardOp==="cut") sys.clipboard=null;
+  renderDesktop();
+  alert("粘贴完成");
+  hideAllMenu();
+}
+function delFile(){
+  if(sys.selectedIcons.length===0){alert("未选中文件");return}
+  sys.selectedIcons.forEach(id=>{
+    const f = sys.desktopItems.find(x=>x.id===id);
+    if(f.type!=="pc"){
+      sys.recycleBin.push(f);
+      // 如果是txt文档，释放磁盘空间
+      if(f.type === "txt"){
+        const encoder = new TextEncoder();
+        const byteLen = encoder.encode(f.content).length;
+        deleteFileFromDisk(byteLen);
+      }
+    }
+    sys.desktopItems = sys.desktopItems.filter(x=>x.id!==id);
+  })
+  sys.selectedIcons=[];
+  renderDesktop();
+  hideAllMenu();
+  alert("已移入回收站");
+}
+function renameItem(){
+  if(sys.selectedIcons.length!==1){alert("只能单选重命名");return}
+  const f = sys.desktopItems.find(x=>x.id===sys.selectedIcons[0]);
+  const newName = prompt("重命名",f.name);
+  if(newName) {
+    f.name=newName;
+    f.mtime=Date.now();
+  }
+  renderDesktop();
+  hideAllMenu();
+}
+function openSelectedFile(){
+  if(sys.selectedIcons.length!==1) return;
+  const f = sys.desktopItems.find(x=>x.id===sys.selectedIcons[0]);
+  openItem(f.type,f.id);
+  hideAllMenu();
+}
+function showProperty(){
+  if(sys.selectedIcons.length!==1){alert("请单选文件");return}
+  const f = sys.desktopItems.find(x=>x.id===sys.selectedIcons[0]);
+  $("#propBody").innerHTML = `
+    <p>名称：${f.name}</p>
+    <p>类型：${f.type}</p>
+    <p>修改时间：${new Date(f.mtime).toLocaleString()}</p>
+  `;
+  $("#propModal").style.display="block";
+  hideAllMenu();
+}
+function closePropModal(){
+  $("#propModal").style.display="none";
+}
+
+// ========== apps.js 全部内容 ==========
+// 文件资源管理器
+// 根据文件夹名称，获取C盘下的文件夹节点对象
+function getCChildFolder(folderName) {
+  const cDrive = sys.fs.drives[0];
+  return cDrive.children.find(f => f.name === folderName);
+}
+
+// 设置资源管理器当前目录，刷新界面
+function enterFolder(folderName) {
+  const folderObj = getCChildFolder(folderName);
+  if (!folderObj) return;
+  sys.currentExplorerFolder = folderObj;
+  refreshExplorer();
+}
+
+// 在当前资源管理器目录新建txt文件
+function newFileInCurrentDir(filename){
+  if(!sys.currentExplorerFolder){
+    alert("请先进入一个文件夹！");
+    return false;
+  }
+  const encoder = new TextEncoder();
+  const byteLen = encoder.encode("").length;
+  if(!createFileOnDisk(byteLen)) return false;
+
+  const newItem = {
+    name:filename,
+    type:"txt",
+    content:"",
+    mtime:Date.now()
+  };
+  sys.currentExplorerFolder.children.push(newItem);
+  refreshExplorer();
+  return true;
+}
+
+// 在当前目录新建子文件夹
+function newFolderInCurrentDir(folderName){
+  if(!sys.currentExplorerFolder){
+    alert("请先进入一个文件夹！");
+    return false;
+  }
+  const newFolder = {
+    name:folderName,
+    type:"folder",
+    children:[]
+  };
+  sys.currentExplorerFolder.children.push(newFolder);
+  refreshExplorer();
+}
+
+// 文件资源管理器
+function renderTree(){
+  let html = "";
+  //快速访问
+  html += `<div class="tree-item tree-fold">★ 快速访问</div>`;
+  sys.fs.quickAccess.forEach(item=>{
+    html += `<div class="tree-item tree-indent">📄 ${item.name}</div>`;
+  })
+  //云盘
+  html += `<div class="tree-item tree-fold">☁ WPS云盘</div>`;
+  html += `<div class="tree-item tree-fold">☁ OneDrive</div>`;
+  //此电脑
+  html += `<div class="tree-item tree-fold">💻 此电脑</div>`;
+  sys.fs.drives.forEach(d=>{
+    let arrow = d.expanded ? "▼" : "▶";
+    html += `<div class="tree-item tree-indent" onclick="toggleDrive('${d.name}')">${arrow} 💿 ${d.name}</div>`;
+    if(d.expanded){
+      d.children.forEach(child=>{
+        html += `<div class="tree-item tree-indent" onclick="openFolderInExplorer('${child.name}')">📁 ${child.name}</div>`;
+      })
+    }
+  })
+  //网络
+  html += `<div class="tree-item tree-fold">🌐 网络</div>`;
+  return html;
+}
+function toggleDrive(driveName){
+  const drive = sys.fs.drives.find(d=>d.name===driveName);
+  if(drive){
+    drive.expanded = !drive.expanded;
+    refreshExplorer();
+  }
+}
+function toggleTreeItem(name){
+  function findNode(n,target){
+    if(n.name === target) return n;
+    if(n.children){
+      for(let c of n.children){
+        const r = findNode(c,target);
+        if(r) return r;
+      }
+    }
+    return null;
+  }
+  const nd = findNode(sys.fs,name);
+  if(nd){
+    nd.expanded = !nd.expanded;
+    refreshExplorer();
+  }
+}
+let explorerWinId = null;
+function openThisPC(){
+  explorerWinId = createWindow("此电脑",`
+    <div class="explorer-wrap">
+      <input class="address-bar" value="C:\\" onkeydown="if(event.key==='Enter'){alert('简易版暂不支持手动输入路径跳转')}">
+      <div class="explorer-main">
+        <div class="tree-panel" id="treePanel"></div>
+        <div class="file-list-panel" id="fileListPanel"></div>
+      </div>
+    </div>
+  `)
+  //打开默认C盘根目录
+  sys.currentExplorerFolder = null;
+  refreshExplorer();
+}
+function openFolderInExplorer(folderName){
+  enterFolder(folderName);
+}
+function refreshExplorer(){
+  const treePanel = document.querySelector("#treePanel");
+  const fileListPanel = document.querySelector("#fileListPanel");
+  const addrBar = document.querySelector(".address-bar");
+  if(!treePanel || !fileListPanel) return;
+
+  treePanel.innerHTML = renderTree();
+  let fileHtml = "";
+
+  let currentDir;
+  if(sys.currentExplorerFolder){
+    currentDir = sys.currentExplorerFolder;
+    if(addrBar) addrBar.value = "C:\\" + currentDir.name;
+    //渲染当前文件夹里面的子项
+    if(currentDir.children && currentDir.children.length>0){
+      currentDir.children.forEach(child=>{
+        if(child.type === "folder"){
+          // 可点击进入文件夹
+          fileHtml += `<div class="file-item" onclick="enterFolder('${child.name}')">📁 ${child.name}</div>`;
+        }else{
+          fileHtml += `<div class="file-item">📄 ${child.name}</div>`;
+        }
+      })
+    }else{
+      fileHtml += `<div class="file-item">此文件夹为空</div>`;
+    }
+  }else{
+    //根目录：C盘根
+    if(addrBar) addrBar.value = "C:\\";
+    const cDrive = sys.fs.drives[0];
+    cDrive.children.forEach(folder=>{
+      //点击右侧文件夹进入
+      fileHtml += `<div class="file-item" onclick="enterFolder('${folder.name}')">📁 ${folder.name}</div>`;
+    })
+    //C盘磁盘项 + 容量条
+    const usedBytes = cDrive.totalBytes - cDrive.freeBytes;
+    const totalGB = bytesToGB(cDrive.totalBytes);
+    const freeGB = bytesToGB(cDrive.freeBytes);
+    const percent = (usedBytes / cDrive.totalBytes *100).toFixed(1);
+    fileHtml += `
+    <div class="file-item">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span>💿 ${cDrive.name}</span>
+      </div>
+      <div style="width:100%;height:22px;background:#ddd;border-radius:3px;margin:4px 0;">
+        <div style="width:${percent}%;height:100%;background:#0078d4;border-radius:3px;"></div>
+      </div>
+      <span>${freeGB.toFixed(1)} GB 可用，共 ${totalGB.toFixed(0)} GB</span>
+    </div>
+    `;
+  }
+  fileListPanel.innerHTML = fileHtml;
+}
+
+//记事本
+function openNotepad(file=null){
+  let content = file ? file.content : "";
+  let name = file ? file.name : "无标题 - 记事本";
+  createWindow(name,`
+    <textarea id="noteText">${content}</textarea>
+    <br>
+    <button onclick="saveNote(${file?.id??0})">保存</button>
+    <button onclick="saveAsNote()">另存为</button>
+  `)
+}
+// 保存已有文件
+function saveNote(fileId){
+  const text = $("#noteText").value;
+  const targetFile = sys.desktopItems.find(f=>f.id === fileId);
+  const encoder = new TextEncoder();
+  const byteLen = encoder.encode(text).length;
+  if(targetFile){
+    // 更新文件内容，旧空间释放，重新占用
+    const oldByteLen = encoder.encode(targetFile.content).length;
+    deleteFileFromDisk(oldByteLen);
+    if(createFileOnDisk(byteLen)){
+      targetFile.content = text;
+      targetFile.mtime = Date.now();
+      alert("保存成功");
+    }
+  }else{
+    alert("文件不存在，请点另存为");
+  }
+}
+// 另存为新建文件
+function saveAsNote(){
+  const text = $("#noteText").value;
+  const fn = prompt("另存为文件名：","文档.txt");
+  if(!fn) return;
+  const id = Date.now();
+  const encoder = new TextEncoder();
+  const byteLen = encoder.encode(text).length;
+  if(createFileOnDisk(byteLen)){
+    sys.desktopItems.push({id,name:fn,type:"txt",content:text,mtime:Date.now()});
+    renderDesktop();
+    alert("另存成功");
+  }
+}
+//任务管理器
+function openTaskManager(){
+  let html = `<table><tr><th>进程</th><th>内存占用</th><th>操作</th></tr>`;
+  sys.windows.forEach((w,i)=>{
+    html += `<tr><td>窗口${i+1}</td><td>2GB</td><td><button onclick="closeWin(${w.winId})">结束任务</button></tr>`
+  })
+  html += `</table>`;
+  createWindow("任务管理器",html);
+}
+//回收站
+function openRecycleBin(){
+  let html = `<p>回收站项目数量：${sys.recycleBin.length}</p>`;
+  sys.recycleBin.forEach((item,i)=>{
+    html += `<div>${item.name} <button onclick="restoreItem(${i})">还原</button></div>`
+  })
+  html += `<br><button onclick="emptyRecycle()">清空回收站</button>`;
+  createWindow("回收站",html);
+}
+function restoreItem(idx){
+  const item = sys.recycleBin[idx];
+  item.mtime = Date.now();
+  // 还原txt文件占用空间
+  if(item.type === "txt"){
+    const encoder = new TextEncoder();
+    const byteLen = encoder.encode(item.content).length;
+    createFileOnDisk(byteLen);
+  }
+  sys.desktopItems.push(item);
+  sys.recycleBin.splice(idx,1);
+  renderDesktop();
+  alert("文件已还原到桌面");
+}
+function emptyRecycle(){
+  sys.recycleBin.forEach(item=>{
+    if(item.type === "txt"){
+      const encoder = new TextEncoder();
+      const byteLen = encoder.encode(item.content).length;
+      deleteFileFromDisk(byteLen);
+    }
+  })
+  sys.recycleBin=[];
+  renderDesktop();
+  alert("回收站已清空")
+}
+//设置
+function openSettings(){
+  createWindow("设置",`
+    <p>系统设置</p>
+    <p>内存上限：${sys.ramTotal}GB</p>
+    <p>当前占用：${sys.ramUsed}GB</p>
+  `)
+}
+function openPersonalize(){
+  createWindow("个性化",`
+    <p>桌面背景设置</p>
+    <p>模拟器当前壁纸：Win10 蓝色渐变壁纸</p>
+  `)
+}
+//微信
+function openWechat(){
+  let contactHtml = "";
+  sys.wechatChats.forEach((c,idx)=>{
+    contactHtml += `<div class="im-contact-item" onclick="renderWechatChat(${idx})">${c.name}</div>`
+  })
+  createWindow("微信",`
+    <div class="im-container">
+      <div class="im-sidebar">${contactHtml}</div>
+      <div class="im-chat-area">
+        <div class="im-chat-content" id="wechatChatBox"></div>
+        <div class="im-input-area">
+          <textarea id="wechatInput"></textarea>
+          <br>
+          <button onclick="sendWechatMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+  `)
+  renderWechatChat(0);
+}
+function renderWechatChat(idx){
+  const chat = sys.wechatChats[idx];
+  let msgHtml = "";
+  chat.msgList.forEach(m=>{
+    msgHtml += `<div class="msg-${m.who}"><span class="msg-bubble">${m.text}</span></div>`
+  })
+  $("#wechatChatBox").innerHTML = msgHtml;
+  $("#wechatChatBox").scrollTop = $("#wechatChatBox").scrollHeight;
+  window.wechatCurrentChatIdx = idx;
+}
+function sendWechatMsg(){
+  const txt = $("#wechatInput").value.trim();
+  if(!txt) return;
+  sys.wechatChats[window.wechatCurrentChatIdx].msgList.push({who:"self",text:txt});
+  $("#wechatInput").value="";
+  renderWechatChat(window.wechatCurrentChatIdx);
+}
+//QQ
+function openQQ(){
+  let contactHtml = "";
+  sys.qqChats.forEach((c,idx)=>{
+    contactHtml += `<div class="im-contact-item" onclick="renderQQChat(${idx})">${c.name}</div>`
+  })
+  createWindow("QQ",`
+    <div class="im-container">
+      <div class="im-sidebar">${contactHtml}</div>
+      <div class="im-chat-area">
+        <div class="im-chat-content" id="qqChatBox"></div>
+        <div class="im-input-area">
+          <textarea id="qqInput"></textarea>
+          <br>
+          <button onclick="sendQQMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+  `)
+  renderQQChat(0);
+}
+function renderQQChat(idx){
+  const chat = sys.qqChats[idx];
+  let msgHtml = "";
+  chat.msgList.forEach(m=>{
+    msgHtml += `<div class="msg-${m.who}"><span class="msg-bubble">${m.text}</span></div>`
+  })
+  $("#qqChatBox").innerHTML = msgHtml;
+  $("#qqChatBox").scrollTop = $("#qqChatBox").scrollHeight;
+  window.qqCurrentChatIdx = idx;
+}
+function sendQQMsg(){
+  const txt = $("#qqInput").value.trim();
+  if(!txt) return;
+  sys.qqChats[window.qqCurrentChatIdx].msgList.push({who:"self",text:txt});
+  $("#qqInput").value="";
+  renderQQChat(window.qqCurrentChatIdx);
+}
+//企业微信
+function openWeCom(){
+  let contactHtml = "";
+  sys.wecomChats.forEach((c,idx)=>{
+    contactHtml += `<div class="im-contact-item" onclick="renderWeComChat(${idx})">${c.name}</div>`
+  })
+  createWindow("企业微信",`
+    <div class="im-container">
+      <div class="im-sidebar">${contactHtml}</div>
+      <div class="im-chat-area">
+        <div class="im-chat-content" id="wecomChatBox"></div>
+        <div class="im-input-area">
+          <textarea id="wecomInput"></textarea>
+          <br>
+          <button onclick="sendWeComMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+  `)
+  renderWeComChat(0);
+}
+function renderWeComChat(idx){
+  const chat = sys.wecomChats[idx];
+  let msgHtml = "";
+  chat.msgList.forEach(m=>{
+    msgHtml += `<div class="msg-${m.who}"><span class="msg-bubble">${m.text}</span></div>`
+  })
+  $("#wecomChatBox").innerHTML = msgHtml;
+  $("#wecomChatBox").scrollTop = $("#wecomChatBox").scrollHeight;
+  window.wecomCurrentChatIdx = idx;
+}
+function sendWeComMsg(){
+  const txt = $("#wecomInput").value.trim();
+  if(!txt) return;
+  sys.wecomChats[window.wecomCurrentChatIdx].msgList.push({who:"self",text:txt});
+  $("#wecomInput").value="";
+  renderWeComChat(window.wecomCurrentChatIdx);
+}
+//飞书
+function openLark(){
+  let contactHtml = "";
+  sys.larkChats.forEach((c,idx)=>{
+    contactHtml += `<div class="im-contact-item" onclick="renderLarkChat(${idx})">${c.name}</div>`
+  })
+  createWindow("飞书",`
+    <div class="im-container">
+      <div class="im-sidebar">${contactHtml}</div>
+      <div class="im-chat-area">
+        <div class="im-chat-content" id="larkChatBox"></div>
+        <div class="im-input-area">
+          <textarea id="larkInput"></textarea>
+          <br>
+          <button onclick="sendLarkMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+  `)
+  renderLarkChat(0);
+}
+function renderLarkChat(idx){
+  const chat = sys.larkChats[idx];
+  let msgHtml = "";
+  chat.msgList.forEach(m=>{
+    msgHtml += `<div class="msg-${m.who}"><span class="msg-bubble">${m.text}</span></div>`
+  })
+  $("#larkChatBox").innerHTML = msgHtml;
+  $("#larkChatBox").scrollTop = $("#larkChatBox").scrollHeight;
+  window.larkCurrentChatIdx = idx;
+}
+function sendLarkMsg(){
+  const txt = $("#larkInput").value.trim();
+  if(!txt) return;
+  sys.larkChats[window.larkCurrentChatIdx].msgList.push({who:"self",text:txt});
+  $("#larkInput").value="";
+  renderLarkChat(window.larkCurrentChatIdx);
+}
+//浏览器
+function openBrowser(){
+  createWindow("浏览器",`
+    <div class="browser-wrap">
+      <div class="browser-topbar">
+        <button onclick="browserBack()">←</button>
+        <button onclick="browserForward()">→</button>
+        <button onclick="browserReload()">↻</button>
+        <input class="browser-url" id="browserUrl" value="${sys.browserUrl}" />
+        <button onclick="browserGo()">前往</button>
+      </div>
+      <div class="browser-page" id="browserPage">
+        <h3>模拟器浏览器</h3>
+        <p>输入网址点前往，这里是模拟页面，不会真实联网。</p>
+      </div>
+    </div>
+  `)
+}
+function browserGo(){
+  const url = $("#browserUrl").value;
+  sys.browserUrl = url;
+  $("#browserPage").innerHTML = `<h3>访问：${url}</h3><p>模拟页面加载成功。</p>`;
+}
+function browserReload(){
+  $("#browserPage").innerHTML = `<h3>页面已刷新</h3><p>地址：${sys.browserUrl}</p>`;
+}
+function browserBack(){
+  $("#browserPage").innerHTML = `<p>← 返回上一页（模拟）</p>`;
+}
+function browserForward(){
+  $("#browserPage").innerHTML = `<p>→ 前进下一页（模拟）</p>`;
+}
+
+</script>
+</body>
+</html>
