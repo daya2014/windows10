@@ -230,35 +230,40 @@ $("#monitor").onclick = function(){
 function shutdown(){
   sys.powerOn = false;
   $("#win10").style.display = "none";
-  $("#monitor").classList.add("screen-off");
   $("#startMenu").style.display = "none";
   document.querySelectorAll(".window").forEach(w=>w.remove());
   sys.windows = [];
   updateRAM();
 }
-
 function restart(){
   shutdown();
   setTimeout(()=>{
     sys.powerOn = true;
     $("#win10").style.display = "block";
-    $("#monitor").classList.remove("screen-off");
     initDesktop();
+    startClock();
     updateRAM();
-  },800);
+  },1000);
 }
+
 
 function toggleStartMenu(){
   const sm = $("#startMenu");
   sm.style.display = sm.style.display==="block" ? "none":"block";
 }
 document.addEventListener("click",(e)=>{
-  const sm=$("#startMenu");
-  const btn=document.querySelector(".start-btn");
+  const sm = $("#startMenu");
+  const btn = document.querySelector(".start-btn");
   if(sm.style.display==="block" && !sm.contains(e.target) && !btn.contains(e.target)){
     sm.style.display="none";
   }
 })
+// 阻止菜单内部点击冒泡，保证关机按钮能触发
+document.querySelector("#startMenu").addEventListener("click",e=>{
+  e.stopPropagation();
+})
+
+
 function startClock(){
   setInterval(()=>{
     const d = new Date();
@@ -453,15 +458,17 @@ function bindFileListRightMenu(){
   const menu = $("#expRightMenu");
   if(!panel || !menu) return;
   panel.oncontextmenu = function(e){
-    e.preventDefault();
+    e.preventDefault(); //阻止浏览器原生右键菜单
     menu.style.left = e.offsetX +"px";
     menu.style.top = e.offsetY +"px";
     menu.style.display = "block";
   }
+  //点击页面空白关闭自定义右键菜单
   document.addEventListener("click",()=>{
     menu.style.display="none";
   })
 }
+
 function showExplorerProp(){
   $("#expRightMenu").style.display="none";
   alert("资源管理器属性\n簇大小：4KB(4096字节)\n模拟NTFS文件系统");
